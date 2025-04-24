@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "agent-gateway"
+version = "0.1.0"
+description = ""
+authors = ["naofumi1014-ds <osawa.naofumi@dentsusoken.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+orchestration-framework = "^1.0.3"
+load-dotenv = "^0.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
