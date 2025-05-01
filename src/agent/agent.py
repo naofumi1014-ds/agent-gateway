@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import requests
 
 
+# ! 修正
 class AgentGateway:
     def __init__(self):
         load_dotenv()
