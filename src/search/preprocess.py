@@ -23,6 +23,7 @@ class Search_preprocess:
     def __init__(self):
         load_dotenv()
 
+        self.warehouse = os.getenv('SNOWFLAKE_WAREHOUSE')
         self.database = os.getenv('SNOWFLAKE_DATABASE')
         self.schema = os.getenv('SNOWFLAKE_SCHEMA')
 
@@ -30,7 +31,7 @@ class Search_preprocess:
         user=os.getenv('SNOWFLAKE_USER'),
         password=os.getenv('SNOWFLAKE_PASSWORD'),
         account=os.getenv('SNOWFLAKE_ACCOUNT'), 
-        warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
+        warehouse=self.warehouse,
         database=self.database,
         schema=self.schema)
         
@@ -43,33 +44,44 @@ class Search_preprocess:
                 openai_api_type="azure",
                 openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
                 openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION"))
+        
+    def test_connection(self):
+        try:
+            cursor = self.connector.cursor()
+            cursor.execute("SELECT CURRENT_VERSION()")
+            version = cursor.fetchone()
+            logger.info(f"Connected to Snowflake: {version}")
+            cursor.close()
+        except Exception as e:
+            logger.error(f"Failed to connect to Snowflake: {e}")
 
 
     def run(self) -> None:
         """Cortex Searchを使用する環境を構築"""
         self.create_db()
         self.create_wh()
-        hoge = self.pdf_to_chunks()
-        logger.info(len(hoge.embedding))
+        _ = self.pdf_to_chunks()
         return logger.info("Preprocessが完了しました")
 
     def create_db(self) -> None:
         """データベースを作成する"""
         query = f"""CREATE DATABASE IF NOT EXISTS {self.database}"""
         self.connector.cursor().execute(query)
+        self.connector.commit()  
         self.connector.cursor().close()
         return logger.info(f"データベース {self.database} を作成しました")
     
     def create_wh(self) -> None:
         """ウェアハウスを作成する"""
-        query = f"""CREATE OR REPLACE WAREHOUSE {self.schema} WITH
+        query = f"""CREATE OR REPLACE WAREHOUSE {self.warehouse} WITH
             WAREHOUSE_SIZE='X-SMALL'
             AUTO_SUSPEND = 120
             AUTO_RESUME = TRUE
             INITIALLY_SUSPENDED=TRUE"""
         self.connector.cursor().execute(query)
+        self.connector.commit()  
         self.connector.cursor().close()
-        return logger.info(f"ウェアハウス {self.schema} を作成しました")
+        return logger.info(f"ウェアハウス {self.warehouse} を作成しました")
     
     def pdf_to_chunks(self) -> Chunks:
         """PDFをチャンクに分割する"""
@@ -81,15 +93,22 @@ class Search_preprocess:
 
         logger.info("PDFのチャンク生成が完了しました")
 
-        
         return Chunks(
             embedding=vectors,
             text=texts
         )
+    
+    def upload_pdf(self) -> None:
+        """PDFをSnowflakeにアップロードする"""
+
+        logger.info("チャンク化したPDFをSnowflakeにアップロードしました")
+
+        pass
 
 
 
 if __name__ == "__main__":
     logger.info("Search Preprocessを開始...")
     search_preprocess = Search_preprocess()
+    # search_preprocess.test_connection()
     search_preprocess.run()
