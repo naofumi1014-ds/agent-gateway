@@ -7,7 +7,8 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import AzureOpenAIEmbeddings
 from response import Chunk
-import json
+from snowflake.core import Root
+from snowflake.snowpark import Session
 
 logging.basicConfig(
     level=logging.INFO,
@@ -67,6 +68,17 @@ class Search_preprocess:
         self.create_table()
         Chunk_list = self.pdf_to_chunks()
         self.upload_pdf(Chunk_list)
+        self.create_search_service()
+        search_client = self.search_client()
+        # 検索
+        results = search_client.search(
+            query="新入社員の有給日数",
+            columns=["chunk_id", "file_name", "text"],  # 表示したい列を指定
+            limit=5
+        )
+        logger.info("検索結果:")
+        for result in results:
+            logger.info(result)
         return logger.info("Cortex Search Preprocessが完了しました")
 
     def create_db(self) -> None:
@@ -150,11 +162,69 @@ class Search_preprocess:
         logger.info("チャンク化したPDFをSnowflakeにアップロードしました")
 
     def create_search_service(self) -> None:
-        """Cortex Searchを作成する 現状はUIか、SQLで作成する必要がある"""
+        """Cortex Search Service を作成する"""
+        cursor = self.connector.cursor()
 
+        self.search_service = "WORK_RULES_OF_EMPLOYMENT_SEARCH_SVC"
 
+        query = f"""
+        CREATE OR REPLACE CORTEX SEARCH SERVICE {self.database}.{self.schema}.{self.search_service}
+        ON text
+        ATTRIBUTES file_name, chunk_id
+        WAREHOUSE = {self.warehouse}
+        TARGET_LAG = '1 hour'
+        AS
+            SELECT
+                chunk_id,
+                file_name,
+                text
+            FROM {self.database}.{self.schema}.{self.table}
+        """
 
-        logger.info("Cortex Searchの作成が完了しました")
+        try:
+            cursor.execute(query)
+            self.connector.commit()
+            logger.info("Cortex Searchの作成が完了しました")
+        except Exception as e:
+            logger.error(f"Cortex Searchの作成に失敗しました: {e}")
+        finally:
+            cursor.close()
+            logger.info("Cortex Searchの作成が完了しました")
+
+    def search_client(self) -> Root:
+        """
+        Snowflake Cortex Search Service を呼び出して、類似文検索を行う
+        SQL実行系とconnectionが違うので、別途用意する
+        """
+        connection_parameters = {
+            "account": os.getenv("SNOWFLAKE_ACCOUNT"),
+            "user": os.getenv("SNOWFLAKE_USER"),
+            "password": os.getenv("SNOWFLAKE_PASSWORD"),
+            "role": os.getenv("SNOWFLAKE_ROLE"),
+            "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
+            "database": os.getenv("SNOWFLAKE_DATABASE"),
+            "schema": os.getenv("SNOWFLAKE_SCHEMA")
+        }
+
+        session = Session.builder.configs(connection_parameters).create()
+
+        # Search Service オブジェクトを取得
+        search_service = (
+            Root(session)
+            .databases[self.database]
+            .schemas[self.schema]
+            .cortex_search_services[self.search_service]
+        )
+
+        # 検索
+        # results = search_service.search(
+        #     query=query,
+        #     columns=["chunk_id", "file_name", "text"],  # 表示したい列を指定
+        #     limit=limit
+        # )
+
+        return search_service
+        
 
 
 if __name__ == "__main__":

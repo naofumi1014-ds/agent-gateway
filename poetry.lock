@@ -2767,6 +2767,24 @@ files = [
 ]
 
 [[package]]
+name = "snowflake"
+version = "1.4.0"
+description = "Snowflake Python API"
+optional = false
+python-versions = "<3.12,>=3.9"
+files = [
+    {file = "snowflake-1.4.0-py3-none-any.whl", hash = "sha256:7873e604f85589aa82af961d785456a55d43f11488b5d9bde43a6e8e6d59607d"},
+    {file = "snowflake-1.4.0.tar.gz", hash = "sha256:2017b328bcc3a564a3ce905a559d5560a070121a9aa6bbcad06a4c0d8f21cef4"},
+]
+
+[package.dependencies]
+snowflake-core = "1.4.0"
+snowflake-legacy = "*"
+
+[package.extras]
+ml = ["snowflake-ml-python (==1.8.2)"]
+
+[[package]]
 name = "snowflake-connector-python"
 version = "3.14.1"
 description = "Snowflake Connector for Python"
@@ -2826,6 +2844,39 @@ typing_extensions = ">=4.3,<5"
 development = ["Cython", "coverage", "more-itertools", "numpy (<2.1.0)", "pendulum (!=2.1.1)", "pexpect", "pytest (<7.5.0)", "pytest-cov", "pytest-rerunfailures", "pytest-timeout", "pytest-xdist", "pytzdata"]
 pandas = ["pandas (>=2.1.2,<3.0.0)", "pyarrow (<19.0.0)"]
 secure-local-storage = ["keyring (>=23.1.0,<26.0.0)"]
+
+[[package]]
+name = "snowflake-core"
+version = "1.4.0"
+description = "Snowflake Python API for Resource Management"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "snowflake_core-1.4.0-py3-none-any.whl", hash = "sha256:52532e6bddc7077e18762161f084167c279728483f70f8525f3e0e58c3d50745"},
+    {file = "snowflake_core-1.4.0.tar.gz", hash = "sha256:dc1ccedece41b52fdcb85f89c0ab801bc52c71ae68a3bf5f7e9df74d750fe44f"},
+]
+
+[package.dependencies]
+pydantic = ">=2"
+python-dateutil = ">=2.8.2"
+pyyaml = "*"
+requests = "*"
+snowflake-connector-python = "*"
+urllib3 = "*"
+
+[package.extras]
+dev = ["grpcio-tools", "mypy-protobuf", "protobuf", "pytest", "pytest-cov"]
+
+[[package]]
+name = "snowflake-legacy"
+version = "1.0.0"
+description = "You should switch to the snowflake-uuid package"
+optional = false
+python-versions = "<3.12,>=3.8"
+files = [
+    {file = "snowflake_legacy-1.0.0-py3-none-any.whl", hash = "sha256:25f9678f180d7d5f5b60d17f8112f0ee8a7a77b82c67fd599ed6e27bd502be5a"},
+    {file = "snowflake_legacy-1.0.0.tar.gz", hash = "sha256:2044661c79ba01841ab279c5e74b994532244c9d103224eba16eb159c8ed6033"},
+]
 
 [[package]]
 name = "snowflake-snowpark-python"
@@ -3458,4 +3509,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "8c4de2c3143ec802a1e2e50b32df29ae605536ea6d8908ceadac8ab84dbe1c8f"
+content-hash = "534dfa7d7daf1c1417878837cda15ab7fe5b38a513b4d7ecb3a2281a2a50b0b1"
