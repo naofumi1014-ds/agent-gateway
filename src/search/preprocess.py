@@ -22,7 +22,7 @@ def load_pdf_document(file_path):
 
 class Search_preprocess:
     def __init__(self):
-        load_dotenv()
+        load_dotenv(encoding='utf-8')
 
         self.warehouse = os.getenv('SNOWFLAKE_WAREHOUSE')
         self.database = os.getenv('SNOWFLAKE_DATABASE')
@@ -101,10 +101,9 @@ class Search_preprocess:
     def create_table(self) -> None:
         """チャンク情報を保存するテーブルを作成する"""
         query = f"""CREATE TABLE IF NOT EXISTS {self.schema}.{self.table} (
-                chunk_id INTEGER,
-                file_name STRING,
-                embedding VECTOR(FLOAT, 3072),
-                text STRING
+                chunk_id NUMBER,
+                file_name VARCHAR,
+                text VARCHAR
             )
             """
         cursor = self.connector.cursor()
@@ -123,7 +122,6 @@ class Search_preprocess:
             chunk_data = Chunk(
                 num=num,
                 file_name=self.filename,
-                embedding=self.embeddings.embed_documents([chunk.page_content])[0],
                 text=chunk.page_content
             )
             Chunk_list.append(chunk_data)
@@ -133,26 +131,30 @@ class Search_preprocess:
     
     def upload_pdf(self, Chunk_list) -> None:
         """PDFチャンクをSnowflakeにアップロードする"""
-
         cursor = self.connector.cursor()
 
         insert_query = f"""
-        INSERT INTO {self.schema}.{self.table} (chunk_id, file_name, embedding, text)
-        VALUES (%s, %s, ARRAY[%s], %s)
+        INSERT INTO {self.schema}.{self.table} (chunk_id, file_name, text)
+        VALUES (%s, %s, %s)
         """
 
         for chunk in Chunk_list:
             # INSERT 処理
             cursor.execute(
                 insert_query,
-                (chunk.num, chunk.file_name, chunk.embedding, chunk.text)
+                (chunk.num, chunk.file_name, chunk.text)
             )
 
         self.connector.commit()
         cursor.close()
         logger.info("チャンク化したPDFをSnowflakeにアップロードしました")
 
+    def create_search_service(self) -> None:
+        """Cortex Searchを作成する 現状はUIか、SQLで作成する必要がある"""
 
+
+
+        logger.info("Cortex Searchの作成が完了しました")
 
 
 if __name__ == "__main__":
