@@ -6,7 +6,7 @@ import logging
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import AzureOpenAIEmbeddings
-from response import Chunk
+from .response import Chunk
 from snowflake.core import Root
 from snowflake.snowpark import Session
 
@@ -23,12 +23,12 @@ def load_pdf_document(file_path):
 
 class Search_preprocess:
     def __init__(self):
-        load_dotenv(encoding='utf-8')
+        load_dotenv(encoding='utf-8',override=True)
 
         self.warehouse = os.getenv('SNOWFLAKE_WAREHOUSE')
         self.database = os.getenv('SNOWFLAKE_DATABASE')
         self.schema = os.getenv('SNOWFLAKE_SCHEMA')
-        self.table = "WORK_RULES_OF_EMPLOYMENT"
+        self.table = "WORK_RULES_OF_EMPLOYMENT" # Search用のテーブル名
 
         self.connector = snowflake.connector.connect(
         user=os.getenv('SNOWFLAKE_USER'),
@@ -60,7 +60,7 @@ class Search_preprocess:
             logger.error(f"Failed to connect to Snowflake: {e}")
 
 
-    def run(self) -> None:
+    def run(self) -> Root:
         """Cortex Searchを使用する環境を構築"""
         self.create_db()
         self.create_wh()
@@ -70,17 +70,10 @@ class Search_preprocess:
         self.upload_pdf(Chunk_list)
         self.create_search_service()
         search_client = self.search_client()
-        # 検索
-        results = search_client.search(
-            query="新入社員の有給日数",
-            columns=["chunk_id", "file_name", "text"],  # 表示したい列を指定
-            limit=5
-        )
-        logger.info("検索結果:")
-        for result in results:
-            logger.info(result)
-        return logger.info("Cortex Search Preprocessが完了しました")
+        logger.info("Cortex Search Preprocessが完了しました")
 
+        return search_client
+    
     def create_db(self) -> None:
         """データベースを作成する"""
         query = f"""CREATE DATABASE IF NOT EXISTS {self.database}"""
@@ -112,13 +105,16 @@ class Search_preprocess:
     
     def create_table(self) -> None:
         """チャンク情報を保存するテーブルを作成する"""
+        cursor = self.connector.cursor()
+        cursor.execute(f"DROP TABLE IF EXISTS {self.table};")
+        
         query = f"""CREATE TABLE IF NOT EXISTS {self.schema}.{self.table} (
                 chunk_id NUMBER,
                 file_name VARCHAR,
                 text VARCHAR
             )
             """
-        cursor = self.connector.cursor()
+        
         cursor.execute(query)
         self.connector.commit()
         cursor.close()
@@ -193,7 +189,7 @@ class Search_preprocess:
 
     def search_client(self) -> Root:
         """
-        Snowflake Cortex Search Service を呼び出して、類似文検索を行う
+        Snowflake Cortex Search Service の構築
         SQL実行系とconnectionが違うので、別途用意する
         """
         connection_parameters = {
