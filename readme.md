@@ -8,6 +8,9 @@
 
 ### データ
 - モデル就業規則：https://www.mhlw.go.jp/content/001018385.pdf
-- GPTが生成したTable
+- GPTが生成した従業員の勤怠情報テーブル
 
 ### 使い方
+```python
+PYTHONPATH=. python src/agent/agent.py
+```

@@ -1,15 +1,29 @@
+from logging import getLogger
+import logging
 from agent_gateway import Agent
 from agent_gateway.tools import CortexSearchTool, CortexAnalystTool, PythonTool, SQLTool
 from snowflake.snowpark import Session
 import os
 from dotenv import load_dotenv
-import requests
+from src.analyst.preprocess import Analyst_preprocess
+from src.search.preprocess import Search_preprocess
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = getLogger(__name__)
 
-# ! 修正
 class AgentGateway:
     def __init__(self):
-        load_dotenv()
+        load_dotenv(encoding='utf-8', override=True)
+
+        # SearchとAnalystの用意
+        self.search_preprocess = Search_preprocess()
+        self.search_preprocess.run()
+        self.analyst_preprocess = Analyst_preprocess()
+        self.analyst_preprocess.run()
+
 
         connection_parameters = {
         "account": os.getenv("SNOWFLAKE_ACCOUNT"),
@@ -24,31 +38,36 @@ class AgentGateway:
         self.connection = Session.builder.configs(connection_parameters).create()
 
     def  initialize_tools(self):
-        pass
+        search_config = {
+            "service_name": self.search_preprocess.search_service,
+            "service_topic": "企業が従業員に対して示す、労働条件や職場内の規律を定めた就業に関する規則",
+            "data_description": "就業規則",
+            "retrieval_columns": ["chunk_id", "file_name", "text"],
+            "snowflake_connection": self.connection,
+            "k": 10,
+        }
+
+        analyst_config = {
+            "semantic_model": self.analyst_preprocess.semantic_model_path.replace("src/analyst/semantic_model/", ""),
+            "stage": f"{self.analyst_preprocess.table}_STAGE",
+            "service_topic": "従業員の勤怠データ",
+            "data_description": "４月の従業員の勤怠データ（部署、勤務時間、残業時間、理由）",
+            "snowflake_connection": self.connection,
+            "max_results": 10,
+        }
+
+        self.search_tool = CortexSearchTool(**search_config)
+        self.analyst_tool = CortexAnalystTool(**analyst_config)
 
     def run(self):
-        # Initialize the tools
-        python_crawler_config = {
-        "tool_description": "reads the html from a given URL or website",
-        "output_description": "html of a webpage",
-        "python_func": html_crawl,
-    }
-        search_weather_config = {
-        "tool_description": "searches the weather for a given location",
-        "output_description": "weather information discription",
-        "python_func": search_weather,
-    }   
-        web_crawler = PythonTool(**python_crawler_config)
-        get_weather = PythonTool(**search_weather_config)
+        agent = Agent(snowflake_connection=self.connection, tools=[self.search_tool, self.analyst_tool], max_retries=3)
 
-        agent = Agent(snowflake_connection=self.connection,tools=[web_crawler, get_weather],max_retries=3)
-        
-        response = agent("以下にアクセスして情報をまとめてください https://aitc.dentsusoken.com/ 回答は日本語で生成してください。")
-        print("Response:", response["output"])
-        print("Source:", response["sources"])
+        response = agent("4月の従業員の勤怠データを教えてください。また、就業規則に関する情報も教えてください。")
+        logger.info("Response:", response["output"])
+        logger.info("Source:", response["sources"])
 
 
 if __name__ == "__main__":
-    gateway = AgentGateway()
-    gateway.initialize_tools()
-    gateway.run()
+    agent = AgentGateway()
+    agent.initialize_tools()
+    agent.run()
