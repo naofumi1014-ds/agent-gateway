@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 from src.analyst.preprocess import Analyst_preprocess
 from src.search.preprocess import Search_preprocess
+from .response import AgentResult
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,26 +49,43 @@ class AgentGateway:
         }
 
         analyst_config = {
-            "semantic_model": self.analyst_preprocess.semantic_model_path.replace("src/analyst/semantic_model/", ""),
+            "semantic_model": "@" + str(os.getenv("SNOWFLAKE_DATABASE")) + "." + str(os.getenv("SNOWFLAKE_SCHEMA")) + "." + self.analyst_preprocess.semantic_model_path.replace("src/analyst/semantic_model/", ""),
             "stage": f"{self.analyst_preprocess.table}_STAGE",
-            "service_topic": "従業員の勤怠データ",
-            "data_description": "４月の従業員の勤怠データ（部署、勤務時間、残業時間、理由）",
+            "service_topic": "サンプル総研の従業員の4月の勤怠に関する集計データ",
+            "data_description": "４月の従業員の勤怠データ（部署、勤務時間、残業時間、勤務理由）",
             "snowflake_connection": self.connection,
-            "max_results": 10,
         }
 
         self.search_tool = CortexSearchTool(**search_config)
         self.analyst_tool = CortexAnalystTool(**analyst_config)
 
-    def run(self):
-        agent = Agent(snowflake_connection=self.connection, tools=[self.search_tool, self.analyst_tool], max_retries=3)
+    def run(self, query) -> AgentResult:
+        agent = Agent(snowflake_connection=self.connection, tools=[self.analyst_tool], max_retries=3)
 
-        response = agent("4月の従業員の勤怠データを教えてください。また、就業規則に関する情報も教えてください。")
-        logger.info("Response:", response["output"])
-        logger.info("Source:", response["sources"])
+        response = agent(query)
+        logger.info(response)
+
+        return AgentResult(
+            output=response["output"],
+            sources=[
+            {
+                "tool_type": source.get("tool_type"),
+                "tool_name": source.get("tool_name"),
+                "metadata": [
+                    {
+                        "file_name": metadata.get("file_name"),
+                        "text": metadata.get("text"),
+                        "chunk_id": metadata.get("chunk_id")
+                    }
+                    for metadata in source.get("metadata", [])
+                ]
+            }
+            for source in response.get("sources", []) or []
+        ]
+        )
 
 
 if __name__ == "__main__":
     agent = AgentGateway()
     agent.initialize_tools()
-    agent.run()
+    agent.run("How many employees have worked more than 160 hours?")
