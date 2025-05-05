@@ -13,6 +13,11 @@ tables:
           - 2025-04
         description: The month in which the work was performed, in the format 'YYYY-MM'.
         synonyms:
+          - 勤務月
+          - 勤務年月
+          - 勤務年月日
+          - 勤務月日
+          - 勤務月の年月
           - month_of_work
           - work_period
           - reporting_month
@@ -29,6 +34,9 @@ tables:
           - 井上翔
         description: Employee name of the person who performed the work.
         synonyms:
+          - 従業員名
+          - 社員名
+          - 労働者名
           - staff_member
           - worker_name
           - employee_full_name
@@ -39,11 +47,17 @@ tables:
         expr: DEPARTMENT
         data_type: VARCHAR(16777216)
         sample_values:
-          - 開発部
+          - インフラ部
           - 営業部
           - 人事部
         description: The department to which the work record belongs, indicating the organizational unit responsible for the work.
         synonyms:
+          - 部署
+          - 部門
+          - 課
+          - セクション
+          - チーム
+          - 事業部
           - division
           - section
           - unit
@@ -63,6 +77,13 @@ tables:
           - 技術調査とコードレビュー対応が重なったため
         description: Reason for work or task, describing the purpose or cause of the work recorded.
         synonyms:
+          - 就業理由
+          - 作業理由
+          - 業務理由
+          - 勤務理由
+          - 作業目的
+          - 業務目的
+          - 勤務目的
           - reason_for_work
           - work_purpose
           - job_description
@@ -79,7 +100,9 @@ tables:
           - '172'
         description: Total number of hours worked.
         synonyms:
-          - total_hours_worked
+          - 合計勤務時間
+          - 総労働時間
+          - 労働時間合計
           - total_work_time
           - hours_clocked
           - total_hours_logged
@@ -94,9 +117,15 @@ tables:
           - '52'
         description: The total number of hours worked beyond the regular working hours by an employee.
         synonyms:
-          - extra_hours_worked
+          - 残業時間
+          - 追加時間
+          - 残業した時間
+          - 超過時間
+          - 余分な時間
+          - 補足時間
+          - overtime_hours
+          - extra_hours
           - additional_hours
-          - overtime_worked
           - excess_hours
           - extra_time
-          - supplemental_hours
+          - additional_time
