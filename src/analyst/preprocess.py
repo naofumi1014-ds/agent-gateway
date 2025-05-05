@@ -24,7 +24,7 @@ class Analyst_preprocess:
         self.database = os.getenv('SNOWFLAKE_DATABASE')
         self.schema = os.getenv('SNOWFLAKE_SCHEMA')
         self.table = "WORK_RECORD" # Analyst用のテーブル名
-        self.semantic_model_path = "src/analyst/semantic_model/work_record.yml"
+        self.semantic_model_path = "src/analyst/semantic_model/work_record.yaml"
 
         self.connector = snowflake.connector.connect(
         user=os.getenv('SNOWFLAKE_USER'),

@@ -49,18 +49,21 @@ class AgentGateway:
         }
 
         analyst_config = {
-            "semantic_model": "@" + str(os.getenv("SNOWFLAKE_DATABASE")) + "." + str(os.getenv("SNOWFLAKE_SCHEMA")) + "." + self.analyst_preprocess.semantic_model_path.replace("src/analyst/semantic_model/", ""),
+            "semantic_model": self.analyst_preprocess.semantic_model_path.replace("src/analyst/semantic_model/", ""),
             "stage": f"{self.analyst_preprocess.table}_STAGE",
             "service_topic": "サンプル総研の従業員の4月の勤怠に関する集計データ",
             "data_description": "４月の従業員の勤怠データ（部署、勤務時間、残業時間、勤務理由）",
             "snowflake_connection": self.connection,
+            "max_results": 5,
         }
+
+        logger.info(analyst_config)
 
         self.search_tool = CortexSearchTool(**search_config)
         self.analyst_tool = CortexAnalystTool(**analyst_config)
 
     def run(self, query) -> AgentResult:
-        agent = Agent(snowflake_connection=self.connection, tools=[self.analyst_tool], max_retries=3)
+        agent = Agent(snowflake_connection=self.connection, tools=[self.search_tool,self.analyst_tool], max_retries=3)
 
         response = agent(query)
         logger.info(response)
