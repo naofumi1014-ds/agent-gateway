@@ -12,5 +12,9 @@
 
 ### 使い方
 ```python
-PYTHONPATH=. python src/agent/agent.py
+from src.agent.agent import AgentGateway
+
+agent = AgentGateway()
+agent.initialize_tools()
+response = agent.run("部署はいくつありますか？日本語で回答してください")
 ```
