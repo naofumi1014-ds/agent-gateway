@@ -44,19 +44,49 @@ class Analyst_preprocess:
         except Exception as e:
             logger.error(f"Failed to connect to Snowflake: {e}")
 
+    def table_exists(self) -> bool:
+        """テーブルが既に存在するか確認する"""
+        cursor = self.connector.cursor()
+        try:
+            check_query = f"""
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES 
+            WHERE TABLE_SCHEMA = '{self.schema.upper()}' 
+            AND TABLE_NAME = '{self.table.upper()}'
+            """
+            cursor.execute(check_query)
+            exists = cursor.fetchone()[0] > 0
+            return exists
+        except Exception as e:
+            logger.error(f"テーブル存在確認でエラー: {e}")
+            return False
+        finally:
+            cursor.close()
 
     def run(self) -> None:
         """Cortex Analystを使用する環境を構築"""
-        self.create_db()
-        self.create_wh()
-        self.create_schema()
-        self.create_table()
-        self.insert_data()
-        self.create_stage()
+        if not self.table_exists():
+            logger.info(f"テーブル {self.table} は存在しません。")
+            self.create_db()
+            self.create_wh()
+            self.create_schema()
+            self.create_table()
+            self.insert_data()
+
+        self.enable_aoai()
+        #self.create_stage()
         # self.upload_file(self.semantic_model_path)
 
         logger.info("Cortex Analyst Preprocessが完了しました")
         return None
+    
+    def enable_aoai(self) -> None:
+        """Azure OpenAIを有効化する"""
+        cursor = self.connector.cursor()
+        cursor.execute("USE ROLE ACCOUNTADMIN")
+        cursor.execute("ALTER ACCOUNT SET ENABLE_CORTEX_ANALYST_MODEL_AZURE_OPENAI = TRUE")
+        self.connector.commit()
+        cursor.close()
+        logger.info(f"Azure OpenAIを有効化しました")
 
     def create_db(self) -> None:
         """データベースを作成する"""

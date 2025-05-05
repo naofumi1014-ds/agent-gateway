@@ -59,15 +59,36 @@ class Search_preprocess:
         except Exception as e:
             logger.error(f"Failed to connect to Snowflake: {e}")
 
+    def table_exists(self) -> bool:
+        """テーブルが既に存在するか確認する"""
+        cursor = self.connector.cursor()
+        try:
+            check_query = f"""
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES 
+            WHERE TABLE_SCHEMA = '{self.schema.upper()}' 
+            AND TABLE_NAME = '{self.table.upper()}'
+            """
+            cursor.execute(check_query)
+            exists = cursor.fetchone()[0] > 0
+            return exists
+        except Exception as e:
+            logger.error(f"テーブル存在確認でエラー: {e}")
+            return False
+        finally:
+            cursor.close()
+
 
     def run(self) -> Root:
         """Cortex Searchを使用する環境を構築"""
-        self.create_db()
-        self.create_wh()
-        self.create_schema()
-        self.create_table()
-        Chunk_list = self.pdf_to_chunks()
-        self.upload_pdf(Chunk_list)
+        if not self.table_exists():
+            logger.info(f"テーブル {self.table} は存在しません。")
+            self.create_db()
+            self.create_wh()
+            self.create_schema()
+            self.create_table()
+            Chunk_list = self.pdf_to_chunks()
+            self.upload_pdf(Chunk_list)
+            
         self.create_search_service()
         search_client = self.search_client()
         logger.info("Cortex Search Preprocessが完了しました")
