@@ -63,7 +63,14 @@ class AgentGateway:
         self.analyst_tool = CortexAnalystTool(**analyst_config)
 
     def run(self, query) -> AgentResult:
-        agent = Agent(snowflake_connection=self.connection, tools=[self.search_tool,self.analyst_tool], max_retries=3)
+        # クロスリージョン推論を有効化しLLMモデルを変更する
+        connector = self.analyst_preprocess.connector
+        connector.cursor().execute(f"ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'ANY_REGION';")
+        connector.commit()
+        connector.cursor().close()
+
+        
+        agent = Agent(snowflake_connection=self.connection, tools=[self.search_tool,self.analyst_tool], max_retries=3,planner_llm="claude-3-5-sonnet", agent_llm="claude-3-5-sonnet")
 
         response = agent(query)
         logger.info(response)
