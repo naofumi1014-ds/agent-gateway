@@ -69,12 +69,13 @@ class AgentGateway:
         connector.commit()
         connector.cursor().close()
 
-        
+
         agent = Agent(snowflake_connection=self.connection, tools=[self.search_tool,self.analyst_tool], max_retries=3,planner_llm="claude-3-5-sonnet", agent_llm="claude-3-5-sonnet")
 
         response = agent(query)
         logger.info(response)
 
+        # ! Analystの型も取れるように修正
         return AgentResult(
             output=response["output"],
             sources=[
