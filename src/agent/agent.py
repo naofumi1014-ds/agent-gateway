@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from src.analyst.preprocess import Analyst_preprocess
 from src.search.preprocess import Search_preprocess
 from .response import AgentResult
+from .tools import html_crawl
 
 logging.basicConfig(
     level=logging.INFO,
@@ -57,8 +58,13 @@ class AgentGateway:
             "max_results": 5,
         }
 
-        logger.info(analyst_config)
+        html_crawl_config = {
+            "tool_description": "URLを指定すると、HTMLを取得するツール",
+            "output_description": "htmlのウェブページ",
+            "python_func": html_crawl
+        }
 
+        self.html_crawl_tool = PythonTool(**html_crawl_config)
         self.search_tool = CortexSearchTool(**search_config)
         self.analyst_tool = CortexAnalystTool(**analyst_config)
 
@@ -69,8 +75,11 @@ class AgentGateway:
         connector.commit()
         connector.cursor().close()
 
-
-        agent = Agent(snowflake_connection=self.connection, tools=[self.search_tool,self.analyst_tool], max_retries=3,planner_llm="claude-3-5-sonnet", agent_llm="claude-3-5-sonnet")
+        agent = Agent(snowflake_connection=self.connection, 
+                    tools=[self.search_tool,self.analyst_tool,self.html_crawl_tool], 
+                    max_retries=3,
+                    planner_llm="claude-3-5-sonnet", 
+                    agent_llm="claude-3-5-sonnet")
 
         response = agent(query)
         logger.info(response)
