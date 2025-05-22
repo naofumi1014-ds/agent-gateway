@@ -18,3 +18,7 @@ agent = AgentGateway()
 agent.initialize_tools()
 response = agent.run("部署はいくつありますか？日本語で回答してください")
 ```
+
+# memo
+- トライアル用アカウントは外部アクセスが禁じられているのでagent-gatewayのリポジトリを使えない。
+![alt text](image.png)
