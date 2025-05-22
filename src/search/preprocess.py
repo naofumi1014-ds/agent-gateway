@@ -1,3 +1,4 @@
+from pathlib import Path
 import snowflake.connector
 from dotenv import load_dotenv
 import os
@@ -28,7 +29,7 @@ class Search_preprocess:
         self.warehouse = os.getenv('SNOWFLAKE_WAREHOUSE')
         self.database = os.getenv('SNOWFLAKE_DATABASE')
         self.schema = os.getenv('SNOWFLAKE_SCHEMA')
-        self.table = "WORK_RULES_OF_EMPLOYMENT" # Search用のテーブル名
+        self.table = "SAMPLE_TECH_1Q_MANAGEMENT_PLAN" # Search用のテーブル名
 
         self.connector = snowflake.connector.connect(
         user=os.getenv('SNOWFLAKE_USER'),
@@ -38,9 +39,11 @@ class Search_preprocess:
         database=self.database,
         schema=self.schema)
         
-        self.filename = "src/search/data/モデル就業規則.pdf"
-        self.rules_of_employment = load_pdf_document(self.filename)
-        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        base_dir = Path(__file__).resolve().parent
+        self.filename = base_dir / "data" / "サンプルテック_2025年度_第1四半期_経営計画.pdf"
+
+        self.data = load_pdf_document(self.filename)
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20)
         self.embeddings = AzureOpenAIEmbeddings(
                 deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"), 
                 model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
@@ -143,14 +146,14 @@ class Search_preprocess:
 
     def pdf_to_chunks(self) -> list[Chunk]:
         """PDFをチャンクに分割する"""
-        documents = self.rules_of_employment
+        documents = self.data
         chunks = self.text_splitter.split_documents(documents)
 
         Chunk_list = []
         for num, chunk in enumerate(chunks):
             chunk_data = Chunk(
                 num=num,
-                file_name=self.filename,
+                file_name=str(self.filename),
                 text=chunk.page_content
             )
             Chunk_list.append(chunk_data)
@@ -182,7 +185,7 @@ class Search_preprocess:
         """Cortex Search Service を作成する"""
         cursor = self.connector.cursor()
 
-        self.search_service = "WORK_RULES_OF_EMPLOYMENT_SEARCH_SVC"
+        self.search_service = "CORTEX_SEARCH_SVC"
 
         query = f"""
         CREATE OR REPLACE CORTEX SEARCH SERVICE {self.database}.{self.schema}.{self.search_service}
