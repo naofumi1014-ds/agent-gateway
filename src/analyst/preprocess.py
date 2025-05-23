@@ -64,6 +64,9 @@ class Analyst_preprocess:
             except Exception as e:
                 logger.error(f"テーブル存在確認でエラー: {e}")
                 return False
+            else:
+                logger.info(f"テーブル {table} は存在します。")
+                return True
 
     def run(self) -> None:
         """Cortex Analystを使用する環境を構築"""
@@ -205,9 +208,9 @@ class Analyst_preprocess:
     def create_stage(self) -> None:
         """ステージを作成する"""
         cursor = self.connector.cursor()
-        stage_name = "CORTEX_ANALYST_STAGE"
+        self.stage_name = "CORTEX_ANALYST_STAGE"
         query = f"""
-        CREATE OR REPLACE STAGE {stage_name}
+        CREATE OR REPLACE STAGE {self.stage_name}
         FILE_FORMAT = (
             TYPE = CSV
             FIELD_DELIMITER = ','
@@ -217,7 +220,7 @@ class Analyst_preprocess:
         cursor.execute(query)
         self.connector.commit()
         cursor.close()
-        logger.info(f"ステージ {stage_name} を作成しました")
+        logger.info(f"ステージ {self.stage_name} を作成しました")
 
     def upload_file(self, file_path: str) -> None:
         """ファイルをステージにアップロードする"""

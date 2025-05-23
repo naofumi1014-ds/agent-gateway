@@ -39,11 +39,11 @@ class AgentGateway:
 
         self.connection = Session.builder.configs(connection_parameters).create()
 
-    def  initialize_tools(self):
+    def  initialize_tools(self) -> list:
         search_config = {
             "service_name": self.search_preprocess.search_service,
-            "service_topic": "企業が従業員に対して示す、労働条件や職場内の規律を定めた就業に関する規則",
-            "data_description": "就業規則",
+            "service_topic": "サンプルテック社の第1四半期経営計画",
+            "data_description": "経営計画",
             "retrieval_columns": ["chunk_id", "file_name", "text"],
             "snowflake_connection": self.connection,
             "k": 10,
@@ -51,9 +51,9 @@ class AgentGateway:
 
         analyst_config = {
             "semantic_model": self.analyst_preprocess.semantic_model_path.replace("src/analyst/semantic_model/", ""),
-            "stage": f"{self.analyst_preprocess.table}_STAGE",
-            "service_topic": "サンプル総研の従業員の4月の勤怠に関する集計データ",
-            "data_description": "４月の従業員の勤怠データ（部署、勤務時間、残業時間、勤務理由）",
+            "stage": str(self.analyst_preprocess.stage_name),
+            "service_topic": "サンプルテック社の商品売り上げデータ",
+            "data_description": "商品名、売り上げ、売上地域、件数",
             "snowflake_connection": self.connection,
             "max_results": 5,
         }
@@ -68,20 +68,26 @@ class AgentGateway:
         self.search_tool = CortexSearchTool(**search_config)
         self.analyst_tool = CortexAnalystTool(**analyst_config)
 
-    def run(self, query) -> AgentResult:
-        # クロスリージョン推論を有効化しLLMモデルを変更する
+        return [self.search_tool, self.analyst_tool, self.html_crawl_tool]
+
+    def enable_cross_region_inference(self):
+        logger.info("Cross-region inferenceを有効化します。")
+        # クロスリージョン推論を有効化
         connector = self.analyst_preprocess.connector
         connector.cursor().execute(f"ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'ANY_REGION';")
         connector.commit()
         connector.cursor().close()
+        logger.info("Cross-region inferenceを有効化しました。")
 
+
+    def run(self, query) -> AgentResult:
         agent = Agent(snowflake_connection=self.connection, 
                     tools=[self.search_tool,self.analyst_tool,self.html_crawl_tool], 
                     max_retries=3,
-                    planner_llm="claude-3-5-sonnet", 
-                    agent_llm="claude-3-5-sonnet")
+                    planner_llm="claude-4-sonnet", 
+                    agent_llm="claude-4-sonnet")
 
-        response = agent(query)
+        response = agent.acall(query)
         logger.info(response)
 
         # ! Analystの型も取れるように修正
